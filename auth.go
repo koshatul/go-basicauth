@@ -27,11 +27,6 @@ func (a *Auth) User() string {
 	return a.user
 }
 
-// Password returns the password used for the authentication
-func (a *Auth) Password() string {
-	return a.pw
-}
-
 // SetAuthHeader sets the Authorization header to r using the auth
 // details in a
 //

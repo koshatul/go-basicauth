@@ -18,10 +18,6 @@ type Transport struct {
 	// Authorization headers.
 	Auth AuthSource
 
-	// Base is the base RoundTripper used to make HTTP requests.
-	// If nil, http.DefaultTransport is used.
-	Base http.RoundTripper
-
 	mu     sync.Mutex                      // guards modReq
 	modReq map[*http.Request]*http.Request // original -> modified
 }
@@ -36,7 +32,7 @@ func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req2 := cloneRequest(req) // per RoundTripper contract
 	t.Auth.SetAuthHeader(req2)
 	t.setModReq(req, req2)
-	res, err := t.base().RoundTrip(req2)
+	res, err := http.DefaultTransport.RoundTrip(req2)
 	if err != nil {
 		t.setModReq(req, nil)
 		return nil, err
@@ -53,20 +49,13 @@ func (t *Transport) CancelRequest(req *http.Request) {
 	type canceler interface {
 		CancelRequest(*http.Request)
 	}
-	if cr, ok := t.base().(canceler); ok {
+	if cr, ok := http.DefaultTransport.(canceler); ok {
 		t.mu.Lock()
 		modReq := t.modReq[req]
 		delete(t.modReq, req)
 		t.mu.Unlock()
 		cr.CancelRequest(modReq)
 	}
-}
-
-func (t *Transport) base() http.RoundTripper {
-	if t.Base != nil {
-		return t.Base
-	}
-	return http.DefaultTransport
 }
 
 func (t *Transport) setModReq(orig, mod *http.Request) {
